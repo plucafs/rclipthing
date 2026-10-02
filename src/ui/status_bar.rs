@@ -2,13 +2,11 @@ use egui::{Align, Layout};
 use crate::model::{AppState, WorkerStatus};
 use crate::persist;
 
-const SETTINGS_PATH: &str = "settings.json";
-
 fn bump_thumb_size(state: &mut AppState, delta: f32) {
     let v = (state.settings.thumb_size + delta).clamp(80.0, 320.0);
     if (v - state.settings.thumb_size).abs() > f32::EPSILON {
         state.settings.thumb_size = v;
-        persist::save_settings(SETTINGS_PATH, &state.settings);
+        persist::save_settings(&persist::settings_path(), &state.settings);
     }
 }
 

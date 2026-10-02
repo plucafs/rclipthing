@@ -66,17 +66,21 @@ fn run(rq: &RunRequest, tx: &Sender<WorkerMsg>) {
     let _ = tx.send(WorkerMsg::SearchDone(merged));
 }
 
-fn effective_query(query: &str) -> &str {
+/// Returns the positional query for rclip and how many leading `add_terms` it
+/// already covers (they must then not be passed again as `--add`).
+fn resolve_query<'a>(query: &'a str, add_terms: &'a [String]) -> (&'a str, usize) {
     let q = query.trim();
-    if q.is_empty() {
-        "."
-    } else {
-        q
+    if !q.is_empty() {
+        return (q, 0);
+    }
+    match add_terms.first() {
+        Some(first) if !first.trim().is_empty() => (first.as_str(), 1),
+        _ => (".", 0),
     }
 }
 
 fn invoke(folder: &str, rq: &RunRequest, index: bool) -> Result<Vec<ResultItem>, String> {
-    let query = effective_query(&rq.query);
+    let (query, skip_adds) = resolve_query(&rq.query, &rq.add_terms);
 
     let mut cmd = Command::new("rclip");
     if !index {
@@ -85,7 +89,7 @@ fn invoke(folder: &str, rq: &RunRequest, index: bool) -> Result<Vec<ResultItem>,
     cmd.arg("-t");
     let top = if index { "1".to_string() } else { rq.top_n.to_string() };
     cmd.arg(&top);
-    for a in &rq.add_terms {
+    for a in rq.add_terms.iter().skip(skip_adds) {
         cmd.arg("-a").arg(a);
     }
     for s in &rq.sub_terms {
@@ -196,10 +200,23 @@ mod tests {
     }
 
     #[test]
-    fn test_effective_query_rejects_blank() {
-        assert_eq!(effective_query(""), ".");
-        assert_eq!(effective_query("   "), ".");
-        assert_eq!(effective_query("  cat  "), "cat");
-        assert_eq!(effective_query("."), ".");
+    fn test_resolve_query() {
+        let blank = "   ".to_string();
+        let cat = "cat".to_string();
+        let img = "./img.jpg".to_string();
+
+        assert_eq!(resolve_query("cat", &[]), ("cat", 0));
+        assert_eq!(resolve_query("  cat  ", &[]), ("cat", 0));
+        assert_eq!(resolve_query("", &[]), (".", 0));
+        assert_eq!(resolve_query("   ", &[]), (".", 0));
+        assert_eq!(resolve_query("", &[cat.clone()]), ("cat", 1));
+        assert_eq!(resolve_query("  ", &[img.clone()]), ("./img.jpg", 1));
+        assert_eq!(resolve_query("", &[blank.clone()]), (".", 0));
+        assert_eq!(
+            resolve_query("", &[cat.clone(), img.clone()]),
+            ("cat", 1),
+            "remaining adds stay as --add"
+        );
+        assert_eq!(resolve_query("dog", &[cat.clone()]), ("dog", 0));
     }
 }

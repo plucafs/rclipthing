@@ -3,8 +3,6 @@ use std::path::Path;
 use crate::model::{AppState, Theme};
 use crate::persist;
 
-const SETTINGS_PATH: &str = "settings.json";
-
 pub fn settings_section(ui: &mut egui::Ui, state: &mut AppState) {
     let mut changed = false;
 
@@ -47,8 +45,7 @@ pub fn settings_section(ui: &mut egui::Ui, state: &mut AppState) {
             } else {
                 ui.colored_label(egui::Color32::LIGHT_RED, "not found");
             }
-            let edited = ui.add_sized(
-                [ui.available_width() - 34.0, 22.0],
+            let edited = ui.add(
                 egui::TextEdit::singleline(&mut path_buf).id(crate::ui::folder_edit_id(i)),
             );
             if edited.changed() {
@@ -65,9 +62,15 @@ pub fn settings_section(ui: &mut egui::Ui, state: &mut AppState) {
         changed = true;
     }
 
+    // let input = ui.add(
+    //         egui::TextEdit::singleline(&mut state.query)
+    //             .id(crate::ui::search_input_id())
+    //             .hint_text("Search photos semantically...")
+    //             .font(egui::TextStyle::Body),
+    //     );
+
     ui.horizontal(|ui| {
-        let input = ui.add_sized(
-            [ui.available_width() - 56.0, 24.0],
+        let input = ui.add(
             egui::TextEdit::singleline(&mut state.new_folder)
                 .id(crate::ui::folder_add_id())
                 .hint_text("/path/to/folder"),
@@ -98,6 +101,6 @@ pub fn settings_section(ui: &mut egui::Ui, state: &mut AppState) {
     });
 
     if changed {
-        persist::save_settings(SETTINGS_PATH, &state.settings);
+        persist::save_settings(&persist::settings_path(), &state.settings);
     }
 }

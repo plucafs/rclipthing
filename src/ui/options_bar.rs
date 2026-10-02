@@ -3,8 +3,6 @@ use crate::actions;
 use crate::model::AppState;
 use crate::persist;
 
-const SETTINGS_PATH: &str = "settings.json";
-
 fn term_chips(ui: &mut egui::Ui, terms: &mut Vec<String>, symbol: &str, color: egui::Color32) {
     let mut remove = None;
     for (i, term) in terms.iter().enumerate() {
@@ -80,6 +78,6 @@ pub fn options_bar(ui: &mut egui::Ui, state: &mut AppState) {
     });
 
     if changed {
-        persist::save_settings(SETTINGS_PATH, &state.settings);
+        persist::save_settings(&persist::settings_path(), &state.settings);
     }
 }

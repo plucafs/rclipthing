@@ -164,12 +164,17 @@ fn cell(
 }
 
 /// Returns true when the selection moved this frame (so the grid can scroll to it).
-fn handle_keys(ui: &egui::Ui, state: &mut AppState, cols: usize) -> bool {
+fn handle_keys(
+    ui: &egui::Ui,
+    state: &mut AppState,
+    cols: usize,
+    focus_before: Option<egui::Id>,
+) -> bool {
     let n = state.results.len();
     if n == 0 {
         return false;
     }
-    if ui.memory(|m| m.focused()).is_some() {
+    if focus_before.is_some() || ui.memory(|m| m.focused()).is_some() {
         return false;
     }
 
@@ -191,7 +196,17 @@ fn handle_keys(ui: &egui::Ui, state: &mut AppState, cols: usize) -> bool {
             dy = -1;
         }
         clear = i.key_pressed(Key::Escape);
-        open = i.key_pressed(Key::Enter);
+        open = i.events.iter().any(|e| {
+            matches!(
+                e,
+                egui::Event::Key {
+                    key: Key::Enter,
+                    pressed: true,
+                    repeat: false,
+                    ..
+                }
+            )
+        });
     });
 
     if clear {
@@ -229,7 +244,7 @@ fn handle_keys(ui: &egui::Ui, state: &mut AppState, cols: usize) -> bool {
     false
 }
 
-pub fn results_grid(ui: &mut egui::Ui, state: &mut AppState) {
+pub fn results_grid(ui: &mut egui::Ui, state: &mut AppState, focus_before: Option<egui::Id>) {
     if state.results.is_empty() {
         if state.status_text.is_empty() {
             ui.centered_and_justified(|ui| {
@@ -251,7 +266,7 @@ pub fn results_grid(ui: &mut egui::Ui, state: &mut AppState) {
         state.selected = None;
     }
 
-    let moved = handle_keys(ui, state, cols);
+    let moved = handle_keys(ui, state, cols, focus_before);
 
     let results = state.results.clone();
     let mut scroll_to: Option<Rect> = None;

@@ -20,8 +20,6 @@ use ui::search_bar::search_bar;
 use ui::settings_section::settings_section;
 use ui::status_bar::status_bar;
 
-const SETTINGS_PATH: &str = "settings.json";
-
 struct RclipApp {
     state: AppState,
     loader: ThumbLoader,
@@ -98,6 +96,7 @@ impl RclipApp {
 
 impl eframe::App for RclipApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        let focus_before = ctx.memory(|m| m.focused());
         apply_theme(ctx, &self.state.settings.theme);
         ctx.set_pixels_per_point(self.state.settings.ui_scale);
 
@@ -125,16 +124,14 @@ impl eframe::App for RclipApp {
             search_bar(ui, &mut self.state);
         });
         egui::TopBottomPanel::top("options_panel").show(ctx, |ui| {
-            ui.add_space(4.0);
             options_bar(ui, &mut self.state);
-            ui.add_space(4.0);
             egui::CollapsingHeader::new("Settings")
                 .default_open(false)
                 .show(ui, |ui| settings_section(ui, &mut self.state));
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            results_grid(ui, &mut self.state);
+            results_grid(ui, &mut self.state, focus_before);
         });
 
         if self.state.status == WorkerStatus::Working {
@@ -149,7 +146,7 @@ impl eframe::App for RclipApp {
 }
 
 fn main() -> Result<(), eframe::Error> {
-    let settings = persist::load_settings(SETTINGS_PATH);
+    let settings = persist::load_settings(&persist::settings_path());
 
     let (tx, rx): (Sender<WorkerMsg>, Receiver<WorkerMsg>) = channel();
 
